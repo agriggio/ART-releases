@@ -27,9 +27,7 @@ jobs:
       - name: Get version
         uses: actions/checkout@v4
         with:
-          sparse-checkout: |
-            version.txt
-          sparse-checkout-cone-mode: false
+          path: repo
         
       - name: Install msys2
         uses: msys2/setup-msys2@v2
@@ -95,7 +93,7 @@ jobs:
 
       - name: Configure build
         run: |
-          export ART_DIR="ART-$(cat version.txt)"
+          export ART_DIR="ART-$(cat repo/version.txt)"
           wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
           tar xJf ${ART_DIR}.tar.xz
           mkdir build
@@ -121,7 +119,7 @@ jobs:
       - name: Create bundle
         run: |
           cd build/Release
-          python ../../ART-$(cat version.txt)/tools/win/bundle_ART.py \
+          python ../../ART-$(cat ../../repo/version.txt)/tools/win/bundle_ART.py \
             -o ../../bundle -v -E -I -m c:/msys2
 
       - name: Create installer
@@ -133,7 +131,7 @@ jobs:
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART_$(cat version.txt)_Win64.exe"
+          ARTIFACT_NAME="ART_$(cat repo/version.txt)_Win64.exe"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$(cygpath -u $GITHUB_ENV)"
           mv installer.exe ${ARTIFACT_NAME}
 
