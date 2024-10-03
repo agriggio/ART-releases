@@ -5,10 +5,8 @@ name: Windows Build
 # Controls when the workflow will run
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ ]
+  #push:
+  #  branches: [ "main" ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -26,6 +24,13 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Get version
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            version.txt
+          sparse-checkout-cone-mode: false
+        
       - name: Install msys2
         uses: msys2/setup-msys2@v2
         with:
@@ -35,6 +40,7 @@ jobs:
           install: |
             git
             wget
+            xz
           pacboy: |
             gcc:p
             cmake:p
@@ -89,10 +95,9 @@ jobs:
 
       - name: Configure build
         run: |
-          wget https://bitbucket.org/agriggio/art/downloads/latestversion.txt
-          export ART_DIR="ART-$(cat latestversion.txt)"
-          wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.gz
-          tar xzf ${ART_DIR}.tar.gz
+          export ART_DIR="ART-$(cat version.txt)"
+          wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
+          tar xJf ${ART_DIR}.tar.xz
           mkdir build
           cd build
           export PKG_CONFIG_PATH=c:/msys2/usr/local/lib/pkgconfig
@@ -116,7 +121,7 @@ jobs:
       - name: Create bundle
         run: |
           cd build/Release
-          python ../../ART-$(cat latestversion.txt)/tools/win/bundle_ART.py \
+          python ../../ART-$(cat version.txt)/tools/win/bundle_ART.py \
             -o ../../bundle -v -E -I -m c:/msys2
 
       - name: Create installer
@@ -128,7 +133,7 @@ jobs:
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART_$(cat latestversion.txt)_Win64.exe"
+          ARTIFACT_NAME="ART_$(cat version.txt)_Win64.exe"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$(cygpath -u $GITHUB_ENV)"
           mv installer.exe ${ARTIFACT_NAME}
 
