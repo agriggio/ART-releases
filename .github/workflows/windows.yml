@@ -1,0 +1,144 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Windows Build
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+    
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Install msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          location: C:\msys2
+          update: true
+          msystem: UCRT64
+          install: |
+            git
+            wget
+          pacboy: |
+            gcc:p
+            cmake:p
+            autotools:p
+            ninja:p
+            gtkmm3:p
+            lcms2:p
+            fftw:p
+            lensfun:p
+            mimalloc:p
+            opencolorio:p
+
+      - name: Install exiv2
+        run: |
+          wget https://github.com/Exiv2/exiv2/releases/download/v0.27.7/exiv2-0.27.7-Source.tar.gz
+          tar xzf exiv2-0.27.7-Source.tar.gz
+          mkdir build-exiv2
+          cd build-exiv2
+          cmake \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=Release  \
+            -DCMAKE_INSTALL_PREFIX=c:/msys2/usr/local \
+            -DEXIV2_ENABLE_WIN_UNICODE=1 \
+            -DEXIV2_ENABLE_BMFF=1 \
+            ../exiv2-0.27.7-Source
+          ninja install
+          cd ..
+
+      - name: Install LibRaw
+        run: |
+          git clone --depth 1 https://github.com/LibRaw/LibRaw.git
+          cd LibRaw
+          autoreconf -i
+          ./configure --prefix=c:/msys2/usr/local
+          make -j
+          make install
+          cd ..
+
+      - name: Install CTL
+        run: |
+          git clone --depth 1 https://github.com/ampas/CTL.git
+          mkdir build-CTL
+          cd build-CTL
+          cmake \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=c:/msys2/usr/local \
+            -DCMAKE_CXX_FLAGS=-fpermissive \
+            ../CTL
+          ninja install
+          cd ..
+
+      - name: Configure build
+        run: |
+          wget https://bitbucket.org/agriggio/art/downloads/latestversion.txt
+          export ART_DIR="ART-$(cat latestversion.txt)"
+          wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.gz
+          tar xzf ${ART_DIR}.tar.gz
+          mkdir build
+          cd build
+          export PKG_CONFIG_PATH=c:/msys2/usr/local/lib/pkgconfig
+          cmake \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_CTL=1 \
+            -DENABLE_LIBRAW=1 \
+            -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
+            -DCMAKE_LIBRARY_PATH=/usr/local/lib 
+          cd ..
+
+      - name: Build
+        run: |
+          cmake --build build --target install
+
+      - name: Include Lensfun
+        run: |
+          lensfun-update-data
+
+      - name: Create bundle
+        run: |
+          cd build/Release
+          python ../../ART-$(cat latestversion.txt)/tools/win/bundle_ART.py \
+            -o ../../bundle -v -E -I -m c:/msys2
+
+      - name: Create installer
+        working-directory: bundle
+        shell: pwsh
+        run: |
+          choco install innosetup
+          iscc /F"installer" "WindowsInnoSetup.iss"
+
+      - name: Prepare artifact name
+        run: |
+          ARTIFACT_NAME="ART_$(cat latestversion.txt)_Win64.exe"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$(cygpath -u $GITHUB_ENV)"
+          mv installer.exe ${ARTIFACT_NAME}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+          path: ${{env.ARTIFACT_NAME}}
+
+      - name: Publish artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{env.ARTIFACT_NAME}}
