@@ -105,7 +105,8 @@ jobs:
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
-            -DCMAKE_LIBRARY_PATH=/usr/local/lib 
+            -DCMAKE_LIBRARY_PATH=/usr/local/lib \
+            ../${ART_DIR}
           cd ..
 
       - name: Build
