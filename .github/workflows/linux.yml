@@ -108,9 +108,12 @@ jobs:
           mkdir build
           cd build
           cmake \
-            ../OpenColorIO-${OCIO_VERSION} \
             -DCMAKE_BUILD_TYPE=Release \
-            -DOCIO_BUILD_PYTHON=OFF
+            -DOCIO_BUILD_PYTHON=OFF \
+            -DOCIO_BUILD_APPS=0 \
+            -DOCIO_BUILD_TESTS=0 \
+            -DOCIO_BUILD_GPU_TESTS=0 \
+            ../OpenColorIO-${OCIO_VERSION}
           make -j$(nproc)
           sudo make install
           cd ../..
@@ -168,7 +171,7 @@ jobs:
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART_$(cat repo/version.txt)-linux64.tar.xz"
+          ARTIFACT_NAME="ART-$(cat repo/version.txt)-linux64.tar.xz"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
           echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
 
