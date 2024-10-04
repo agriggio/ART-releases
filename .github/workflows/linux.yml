@@ -1,8 +1,8 @@
 name: Linux x64 Build
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
         with:
           path: repo
         
-      - name: Install dependencies
+      - name: Install base dependencies
         run: |
           sudo apt update
           DEBIAN_FRONTEND=noninteractive sudo apt install -y \
@@ -36,6 +36,7 @@ jobs:
             libcanberra-gtk3-dev \
             libinih-dev \
             libbrotli-dev \
+            libexpat1-dev \
             wget
 
       - name: Install LCMS2

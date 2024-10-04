@@ -1,21 +1,13 @@
-# This is a basic workflow to help you get started with Actions
+name: Windows x64 Build
 
-name: Windows Build
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  #push:
-  #  branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: windows-latest
 
     permissions:
@@ -25,7 +17,6 @@ jobs:
       run:
         shell: msys2 {0}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Get version
         uses: actions/checkout@v4
@@ -140,13 +131,6 @@ jobs:
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$(cygpath -u $GITHUB_ENV)"
           mv installer.exe ${ARTIFACT_NAME} 
           echo "RELEASE_TAG=v$(cat repo/version.txt)" >> "$(cygpath -u $GITHUB_ENV)"
-
-      # - name: Upload artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: ${{env.ARTIFACT_NAME}}
-      #     path: ${{env.ARTIFACT_NAME}}
-      #     compression-level: 0
 
       - name: Publish release
         uses: ncipollo/release-action@v1
