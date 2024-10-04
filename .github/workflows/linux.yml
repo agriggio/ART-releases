@@ -167,7 +167,7 @@ jobs:
           python ../../${ART_NAME}/tools/linux/bundle_ART.py \
             -o ../../${ART_NAME}-linux64 -v -E -I 
           cd ../..
-          tar cJf ${ART_NAME}.tar.xz ${ART_NAME}
+          tar cJf ${ART_NAME}-linux64.tar.xz ${ART_NAME}-linux64
 
       - name: Prepare artifact name
         run: |
