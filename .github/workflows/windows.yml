@@ -134,15 +134,20 @@ jobs:
         run: |
           ARTIFACT_NAME="ART_$(cat repo/version.txt)_Win64.exe"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$(cygpath -u $GITHUB_ENV)"
-          mv installer.exe ${ARTIFACT_NAME}
+          mv installer.exe ${ARTIFACT_NAME} 
+          echo "RELEASE_TAG=v$(cat repo/version.txt)" >> "$(cygpath -u $GITHUB_ENV)"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{env.ARTIFACT_NAME}}
-          path: ${{env.ARTIFACT_NAME}}
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ${{env.ARTIFACT_NAME}}
+      #     path: ${{env.ARTIFACT_NAME}}
+      #     compression-level: 0
 
-      - name: Publish artifacts
-        uses: softprops/action-gh-release@v2
+      - name: Publish release
+        uses: ncipollo/release-action@v1
         with:
-          files: ${{env.ARTIFACT_NAME}}
+          tag: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: true
+          artifacts: ${{ env.ARTIFACT_NAME }}
