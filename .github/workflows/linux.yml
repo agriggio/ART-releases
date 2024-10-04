@@ -1,8 +1,8 @@
 name: Linux Build
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
       - name: Install Lensfun
         run: |
           LENSFUN_VERSION='0.3.4'
-          git clone --depth 1 --branch "$LENSFUN_VERSION" https://github.com/lensfun/lensfun.git
+          git clone --depth 1 --branch "v$LENSFUN_VERSION" https://github.com/lensfun/lensfun.git
           mkdir build_lensfun
           cd build_lensfun
           cmake -DCMAKE_BUILD_TYPE=Release ../lensfun
