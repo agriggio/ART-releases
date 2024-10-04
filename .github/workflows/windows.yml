@@ -32,7 +32,7 @@ jobs:
       - name: Install msys2
         uses: msys2/setup-msys2@v2
         with:
-          location: C:\
+          location: C:\msys2
           update: true
           msystem: MINGW64
           install: |
