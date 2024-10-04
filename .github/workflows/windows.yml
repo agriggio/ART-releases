@@ -32,9 +32,9 @@ jobs:
       - name: Install msys2
         uses: msys2/setup-msys2@v2
         with:
-          location: C:\msys2
+          location: C:\
           update: true
-          msystem: UCRT64
+          msystem: MINGW64
           install: |
             git
             wget
@@ -60,7 +60,7 @@ jobs:
           cmake \
             -GNinja \
             -DCMAKE_BUILD_TYPE=Release  \
-            -DCMAKE_INSTALL_PREFIX=c:/msys2/usr/local \
+            -DCMAKE_INSTALL_PREFIX=c:/msys64/usr/local \
             -DEXIV2_ENABLE_WIN_UNICODE=1 \
             -DEXIV2_ENABLE_BMFF=1 \
             ../exiv2-0.27.7-Source
@@ -72,7 +72,7 @@ jobs:
           git clone --depth 1 https://github.com/LibRaw/LibRaw.git
           cd LibRaw
           autoreconf -i
-          ./configure --prefix=c:/msys2/usr/local
+          ./configure --prefix=c:/msys64/usr/local
           make -j
           make install
           cd ..
@@ -85,7 +85,7 @@ jobs:
           cmake \
             -GNinja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=c:/msys2/usr/local \
+            -DCMAKE_INSTALL_PREFIX=c:/msys64/usr/local \
             -DCMAKE_CXX_FLAGS=-fpermissive \
             ../CTL
           ninja install
@@ -98,7 +98,7 @@ jobs:
           tar xJf ${ART_DIR}.tar.xz
           mkdir build
           cd build
-          export PKG_CONFIG_PATH=c:/msys2/usr/local/lib/pkgconfig
+          export PKG_CONFIG_PATH=c:/msys64/usr/local/lib/pkgconfig
           cmake \
             -GNinja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -121,7 +121,7 @@ jobs:
         run: |
           cd build/Release
           python ../../ART-$(cat ../../repo/version.txt)/tools/win/bundle_ART.py \
-            -o ../../bundle -v -E -I -m c:/msys2
+            -o ../../bundle -v -E -I -m c:/msys64
 
       - name: Create installer
         working-directory: bundle
