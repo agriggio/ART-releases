@@ -1,0 +1,182 @@
+name: Linux Build
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Get version
+        uses: actions/checkout@v4
+        with:
+          path: repo
+        
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          DEBIAN_FRONTEND=noninteractive sudo apt install -y \
+            git \
+            build-essential \
+            cmake \
+            curl \
+            pkg-config \
+            libgtk-3-dev \
+            libgtkmm-3.0-dev \
+            librsvg2-dev \
+            liblcms2-dev \
+            libfftw3-dev \
+            libtiff5-dev \
+            libcanberra-gtk3-dev \
+            libinih-dev \
+            libbrotli-dev \
+            wget
+
+      - name: Install LCMS2
+        run: |
+          LCMS2_VERSION='2.16'
+          wget https://downloads.sourceforge.net/project/lcms/lcms/${LCMS2_VERSION}/lcms2-${LCMS2_VERSION}.tar.gz
+          tar xzf lcms2-${LCMS2_VERSION}.tar.gz
+          cd lcms2-${LCMS2_VERSION}
+          autoreconf -i
+          ./configure --with-fastfloat
+          make -j$(nproc)
+          sudo make install
+          cd ..
+
+      - name: Install Exiv2
+        run: |
+          EXIV2_VERSION='0.28.3'
+          mkdir exiv2
+          cd exiv2
+          wget https://github.com/Exiv2/exiv2/archive/refs/tags/v${EXIV2_VERSION}.tar.gz
+          tar xzf v${EXIV2_VERSION}.tar.gz
+          mkdir build
+          cd build
+          cmake ../exiv2-${EXIV2_VERSION} -DCMAKE_BUILD_TYPE=Release -DEXIV2_ENABLE_BMFF=1
+          make -j$(nproc)
+          sudo make install
+          cd ../..
+
+      - name: Install Lensfun
+        run: |
+          LENSFUN_VERSION='0.3.4'
+          git clone --depth 1 --branch "$LENSFUN_VERSION" https://github.com/lensfun/lensfun.git
+          mkdir build_lensfun
+          cd build_lensfun
+          cmake -DCMAKE_BUILD_TYPE=Release ../lensfun
+          make -j$(nproc)
+          sudo make install
+          cd ..
+
+      - name: Install LibRaw
+        run: |
+          git clone --depth 1 https://github.com/LibRaw/LibRaw.git
+          cd LibRaw
+          autoreconf -i
+          CPPFLAGS=-DUSE_X3FTOOLS ./configure
+          make -j$(nproc)
+          sudo make install
+          cd ..
+
+      - name: Install CTL
+        run: |
+          git clone --depth 1 https://github.com/ampas/CTL.git
+          mkdir build-CTL
+          cd build-CTL
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS=-fpermissive \
+            ../CTL
+          make -j$(nproc)
+          sudo make install
+          cd ..
+
+      - name: Install OpenColorIO
+        run: |
+          OCIO_VERSION='2.3.2'
+          mkdir ocio
+          cd ocio
+          wget https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v${OCIO_VERSION}.tar.gz
+          tar xzf v${OCIO_VERSION}.tar.gz
+          mkdir build
+          cd build
+          cmake \
+            ../OpenColorIO-${OCIO_VERSION} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DOCIO_BUILD_PYTHON=OFF
+          make -j$(nproc)
+          sudo make install
+          cd ../..
+
+      - name: Install mi-malloc
+        run: |
+          MIMALLOC_VERSION='2.1.7'
+          mkdir mimalloc
+          cd mimalloc
+          wget https://github.com/microsoft/mimalloc/archive/refs/tags/v${MIMALLOC_VERSION}.tar.gz
+          tar xzf v${MIMALLOC_VERSION}.tar.gz
+          mkdir build
+          cd build
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            ../mimalloc-${MIMALLOC_VERSION}
+          make -j$(nproc)
+          sudo make install
+          cd ../..
+
+      - name: Configure build
+        run: |
+          sudo ldconfig
+          export ART_DIR="ART-$(cat repo/version.txt)"
+          wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
+          tar xJf ${ART_DIR}.tar.xz
+          mkdir build
+          cd build
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_BUNDLE=1 \
+            -DENABLE_CTL=1 \
+            -DENABLE_LIBRAW=1 \
+            -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
+            -DCMAKE_LIBRARY_PATH=/usr/local/lib \
+            ../${ART_DIR}
+          cd ..
+
+      - name: Build
+        run: |
+          cmake --build build --target install
+
+      - name: Include Lensfun
+        run: |
+          PYTHONPATH=/usr/local/lib/python3.8/site-packages lensfun-update-data
+
+      - name: Create bundle
+        run: |
+          ART_NAME="ART-$(cat repo/version.txt)"
+          cd build/Release
+          python ../../${ART_NAME}/tools/linux/bundle_ART.py \
+            -o ../../${ART_NAME}-linux64 -v -E -I 
+          cd ../..
+          tar cJf ${ART_NAME}.tar.xz ${ART_NAME}
+
+      - name: Prepare artifact name
+        run: |
+          ARTIFACT_NAME="ART_$(cat repo/version.txt)-linux64.tar.xz"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          body: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: true
+          artifacts: ${{ env.ARTIFACT_NAME }}
