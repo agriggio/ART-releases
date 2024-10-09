@@ -100,6 +100,7 @@ jobs:
             -DENABLE_OCIO=1 \
             -DENABLE_CTL=1 \
             -DCTL_INCLUDE_DIR=/usr/local/include/CTL \
+            -DCMAKE_LIBRARY_PATH=/usr/local/lib \
             -DBUILD_BUNDLE=1 \
             ../${ART_DIR}
           cd ..
