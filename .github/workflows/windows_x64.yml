@@ -1,9 +1,6 @@
 name: Windows x64 Build
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
