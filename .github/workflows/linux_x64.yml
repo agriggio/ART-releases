@@ -179,5 +179,5 @@ jobs:
           tag: ${{ env.RELEASE_TAG }}
           body: ${{ env.RELEASE_TAG }}
           allowUpdates: true
-          makeLatest: true
+          # makeLatest: true
           artifacts: ${{ env.ARTIFACT_NAME }}
