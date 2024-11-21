@@ -53,6 +53,7 @@ jobs:
           sudo port -t install exiv2
           sudo port -t install fftw-3-single +openmp
           sudo port -t install openexr
+          sudo port -t install lcms2
 
       - name: Install LibRaw
         run: |
