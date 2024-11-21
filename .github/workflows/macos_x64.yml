@@ -18,14 +18,19 @@ jobs:
         with:
           path: repo
 
+      - name: Download source
+        run: |
+          export ART_DIR="ART-$(cat repo/version.txt)"
+          #wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
+          #tar xJf ${ART_DIR}.tar.xz
+          git clone --depth 1 --branch macos-bundle-simplified https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
+
       - name: Cache MacPorts base install
         id: cache-macports
         uses: actions/cache@v3
-        env:
-          cache-name: cache-macports
         with:
           path: /opt/local
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
+          key: cache-macports-macOS-12-x64
 
       - if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
         name: Install MacPorts and base ports
@@ -114,9 +119,6 @@ jobs:
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           export ART_DIR="ART-$(cat repo/version.txt)"
-          #wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
-          #tar xJf ${ART_DIR}.tar.xz
-          git clone --depth 1 --branch macos-bundle-simplified -o ${ART_DIR} https://agriggio@bitbucket.org/agriggio/art.git
           mkdir build
           cd build
           export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
@@ -154,7 +156,8 @@ jobs:
         run: |
           ARTIFACT_NAME="ART-$(cat repo/version.txt)-macOS_12-x64.dmg"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
-          echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
+          #echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
+          echo "RELEASE_TAG=macOS-testing" >> $GITHUB_ENV
 
       - name: Publish release
         uses: ncipollo/release-action@v1
