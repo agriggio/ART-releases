@@ -172,7 +172,7 @@ jobs:
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART-$(cat repo/version.txt)-${{ matrix.os }}-${{ matrix.arch }}.dmg"
+          ARTIFACT_NAME="ART-$(cat repo/version.txt)_${{ matrix.os }}_${{ matrix.arch }}.dmg"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
           #echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
           echo "RELEASE_TAG=macOS-testing" >> $GITHUB_ENV
@@ -184,4 +184,5 @@ jobs:
           body: ${{ env.RELEASE_TAG }}
           allowUpdates: true
           makeLatest: false
+          draft: true
           artifacts: ${{ env.ARTIFACT_NAME }}
