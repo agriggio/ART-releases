@@ -1,0 +1,194 @@
+name: macOS Builds
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-12, macos-14]
+        include:
+          - os: macos-12
+            arch: x64
+          - os: macos-14
+            arch: arm64
+        
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Get version
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Download source
+        run: |
+          export ART_DIR="ART-$(cat repo/version.txt)"
+          #wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
+          #tar xJf ${ART_DIR}.tar.xz
+          git clone --depth 1 --branch macos-bundle-simplified https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
+
+      - name: Cache MacPorts base install
+        id: cache-macports
+        uses: actions/cache@v3
+        with:
+          path: /opt/local
+          key: cache-macports-${{ matrix.os }}-${{ matrix.arch }}
+
+      - if: |
+          steps.cache-macports.outputs.cache-hit != 'true' &&
+          matrix.os == 'macos-12'
+        name: Install MacPorts x64
+        run: |          
+          wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-12-Monterey.pkg
+          sudo installer -pkg MacPorts-2.10.4-12-Monterey.pkg -target /
+
+      - if: |
+          steps.cache-macports.outputs.cache-hit != 'true' &&
+          matrix.os == 'macos-14'
+        name: Install MacPorts arm64
+        run: |          
+          wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-14-Sonoma.pkg
+          sudo installer -pkg MacPorts-2.10.4-14-Sonoma.pkg -target /
+          
+      - if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
+        name: Install base ports
+        run: |          
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          sudo port -t install pkgconfig
+          sudo port -t install automake
+          sudo port -t install autoconf
+          sudo port -t install libtool
+          sudo port -t install cmake
+          sudo port -t install glib2 +quartz
+          sudo port -t install gtkmm3 +quartz
+          sudo port -t install gtk-osx-application-gtk3
+          sudo port -t install libomp
+          sudo port -t install clang-17
+          sudo port -t install librsvg-devel
+          sudo port -t install lensfun
+          sudo port -t install exiv2
+          sudo port -t install fftw-3-single +openmp
+          sudo port -t install openexr
+          sudo port -t install lcms2
+
+      - name: Install LibRaw
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          git clone --depth 1 https://github.com/LibRaw/LibRaw.git
+          git clone --depth 1 https://github.com/LibRaw/LibRaw-cmake.git
+          cd LibRaw
+          ln -s ../LibRaw-cmake/CMakeLists.txt
+          ln -s ../LibRaw-cmake/cmake
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
+            -DENABLE_X3FTOOLS=1 \
+            ..
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install CTL
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          git clone --depth 1 https://github.com/ampas/CTL.git
+          mkdir build-CTL
+          cd build-CTL
+          /opt/local/bin/cmake \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
+            -DCMAKE_BUILD_TYPE=Release \
+            ../CTL
+          make -j$(nproc)
+          sudo make install
+
+      - name: Install OpenColorIO
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          INSTDIR=/opt/art-deps
+          OCIO_VERSION='2.4.0'
+          mkdir ocio
+          cd ocio
+          wget https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v${OCIO_VERSION}.tar.gz
+          tar xzf v${OCIO_VERSION}.tar.gz
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_INSTALL_PREFIX=$INSTDIR \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DOCIO_BUILD_PYTHON=OFF \
+            -DOCIO_BUILD_APPS=0 \
+            -DOCIO_BUILD_TESTS=0 \
+            -DOCIO_BUILD_GPU_TESTS=0 \
+            ../OpenColorIO-${OCIO_VERSION}
+          make -j$(nproc)
+          sudo make install
+
+      - name: Configure build
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          export ART_DIR="ART-$(cat repo/version.txt)"
+          mkdir build
+          cd build
+          export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
+          /opt/local/bin/cmake \
+            -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
+            -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_CTL=1 \
+            -DENABLE_LIBRAW=1 \
+            -DCTL_INCLUDE_DIR=/opt/art-deps/include/CTL \
+            -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
+            ../${ART_DIR}
+          cd ..
+
+      - name: Build
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          /opt/local/bin/cmake --build build --target install
+
+      - name: Include Lensfun
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          lensfun-update-data
+
+      - name: Create bundle
+        run: |
+          ART_NAME="ART-$(cat repo/version.txt)"
+          OUTDIR=$(pwd)
+          cd build/Release/ART.app
+          python "${OUTDIR}/${ART_NAME}/tools/osx/bundle_ART.py" \
+            -o "${OUTDIR}" -v -r /opt/art-deps/lib \
+            -d "${ART_NAME}_${{ matrix.os }}_${{ matrix.arch }}"
+          cd "${OUTDIR}"
+
+      - name: Prepare artifact name
+        run: |
+          ARTIFACT_NAME="ART-$(cat repo/version.txt)-${{ matrix.os }}-${{ matrix.arch }}.dmg"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          #echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
+          echo "RELEASE_TAG=macOS-testing" >> $GITHUB_ENV
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          body: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: true
+          artifacts: ${{ env.ARTIFACT_NAME }}
