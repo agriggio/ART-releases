@@ -51,22 +51,22 @@ jobs:
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port -d -t install pkgconfig
-          sudo port -t install automake
-          sudo port -t install autoconf
-          sudo port -t install libtool
-          sudo port -t install cmake
-          sudo port -t install glib2 +quartz
-          sudo port -t install gtkmm3 +quartz
-          sudo port -t install gtk-osx-application-gtk3
-          sudo port -t install libomp
-          sudo port -t install clang-17
-          sudo port -t install librsvg-devel
-          sudo port -t install lensfun
-          sudo port -t install exiv2
-          sudo port -t install fftw-3-single +openmp
-          sudo port -t install openexr
-          sudo port -t install lcms2
+          sudo port -d install pkgconfig
+          sudo port install automake
+          sudo port install autoconf
+          sudo port install libtool
+          sudo port install cmake
+          sudo port install glib2 +quartz
+          sudo port install gtkmm3 +quartz
+          sudo port install gtk-osx-application-gtk3
+          sudo port install libomp
+          sudo port install clang-17
+          sudo port install librsvg-devel
+          sudo port install lensfun
+          sudo port install exiv2
+          sudo port install fftw-3-single +openmp
+          sudo port install openexr
+          sudo port install lcms2
 
       - name: Install LibRaw
         run: |
