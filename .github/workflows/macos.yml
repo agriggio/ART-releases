@@ -51,7 +51,7 @@ jobs:
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port -t install pkgconfig
+          sudo port -d -t install pkgconfig
           sudo port -t install automake
           sudo port -t install autoconf
           sudo port -t install libtool
