@@ -55,7 +55,7 @@ jobs:
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port -d install pkgconfig
+          sudo port install pkgconfig
           sudo port install automake
           sudo port install autoconf
           sudo port install libtool
@@ -156,6 +156,7 @@ jobs:
       - name: Build
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          cd build
           make -j$(nproc)
           make install
 
