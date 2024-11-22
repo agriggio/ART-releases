@@ -35,32 +35,20 @@ jobs:
           #tar xJf ${ART_DIR}.tar.xz
           git clone --depth 1 --branch macos-bundle-simplified https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
 
-      - name: Cache MacPorts base install
-        id: cache-macports
-        uses: actions/cache@v3
-        with:
-          path: /opt/local
-          key: cache-macports-${{ matrix.os }}-${{ matrix.arch }}
-
-      - if: |
-          steps.cache-macports.outputs.cache-hit != 'true' &&
-          matrix.os == 'macos-12'
+      - if: ${{ matrix.os == 'macos-12' }}
         name: Install MacPorts x64
         run: |          
           wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-12-Monterey.pkg
           sudo installer -pkg MacPorts-2.10.4-12-Monterey.pkg -target /
 
-      - if: |
-          steps.cache-macports.outputs.cache-hit != 'true' &&
-          matrix.os == 'macos-14'
+      - if: ${{ matrix.os == 'macos-14' }}
         name: Install MacPorts arm64
         run: |          
           wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-14-Sonoma.pkg
           sudo installer -pkg MacPorts-2.10.4-14-Sonoma.pkg -target /
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           
-      - if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
-        name: Install base ports
+      - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           sudo port -t install pkgconfig
