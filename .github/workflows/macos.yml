@@ -15,6 +15,7 @@ jobs:
             arch: x64
           - os: macos-14
             arch: arm64
+      fail-fast: false
         
     runs-on: ${{ matrix.os }}
 
@@ -57,7 +58,6 @@ jobs:
           wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-14-Sonoma.pkg
           sudo installer -pkg MacPorts-2.10.4-14-Sonoma.pkg -target /
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port selfupdate          
           
       - if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
         name: Install base ports
