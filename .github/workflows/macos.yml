@@ -13,8 +13,10 @@ jobs:
         include:
           - os: macos-12
             arch: x64
+            osxtarget: 12.0
           - os: macos-14
             arch: arm64
+            osxtarget: 14.0
       fail-fast: false
         
     runs-on: ${{ matrix.os }}
@@ -144,6 +146,7 @@ jobs:
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/opt/art-deps/include/CTL \
             -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.osxtarget }} \
             ../${ART_DIR}
           cd ..
 
@@ -180,5 +183,5 @@ jobs:
           tag: ${{ env.RELEASE_TAG }}
           body: ${{ env.RELEASE_TAG }}
           allowUpdates: true
-          makeLatest: true
+          makeLatest: false
           artifacts: ${{ env.ARTIFACT_NAME }}
