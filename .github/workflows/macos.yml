@@ -37,7 +37,7 @@ jobs:
           export ART_DIR="ART-$(cat repo/version.txt)"
           #wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
           #tar xJf ${ART_DIR}.tar.xz
-          git clone --depth 1 --branch macos-bundle-simplified https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
+          git clone --depth 1 --branch macos-bundle-v2 https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
 
       - if: ${{ matrix.os == 'macos-12' }}
         name: Install MacPorts x64
@@ -149,6 +149,7 @@ jobs:
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/opt/art-deps/include/CTL \
             -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
+            -DOSX_DEV_BUILD=1 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=$OS_VERSION \
             ../${ART_DIR}
           cd ..
