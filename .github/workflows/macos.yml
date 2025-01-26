@@ -1,22 +1,17 @@
 name: macOS Builds
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [macos-12, macos-14]
+        os: [macos-14]
         include:
-          - os: macos-12
-            arch: x64
-            osxtarget: 12.0
           - os: macos-14
             arch: arm64
             osxtarget: 14.0
+            artversion: 1.25.0
       fail-fast: false
         
     runs-on: ${{ matrix.os }}
@@ -25,24 +20,27 @@ jobs:
       contents: write
     
     steps:
-      - name: Get version
-        uses: actions/checkout@v4
-        with:
-          path: repo
-
-      - name: Download source
+      - name: Get OS version
         run: |
-          export ART_DIR="ART-$(cat repo/version.txt)"
-          #wget https://bitbucket.org/agriggio/art/downloads/${ART_DIR}.tar.xz
-          #tar xJf ${ART_DIR}.tar.xz
-          git clone --depth 1 --branch macos-bundle-simplified https://agriggio@bitbucket.org/agriggio/art.git ${ART_DIR}
+          echo "OS_VERSION=$(sw_vers -productVersion | cut -d . -f 1,2)" >> $GITHUB_ENV
 
-      - if: ${{ matrix.os == 'macos-12' }}
-        name: Install MacPorts x64
-        run: |          
-          wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-12-Monterey.pkg
-          sudo installer -pkg MacPorts-2.10.4-12-Monterey.pkg -target /
+      - name: Get version
+        run: |
+          echo "ART_VERSION=${{ matrix.artversion }}" >> $GITHUB_ENV
 
+      - name: Get repo
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          git clone --branch $ART_VERSION --depth 1 \
+             https://github.com/artpixls/ART.git \
+             repo
+
+      - name: Set build type
+        run: |
+          echo "CTL_BUILD_TYPE=Release" >> $GITHUB_ENV
+          echo "BUILD_TYPE=Release" >> $GITHUB_ENV
+          echo "WITH_SAN=OFF" >> $GITHUB_ENV
+          
       - if: ${{ matrix.os == 'macos-14' }}
         name: Install MacPorts arm64
         run: |          
@@ -53,7 +51,7 @@ jobs:
       - name: Install base ports
         run: |          
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          sudo port -d install pkgconfig
+          sudo port install pkgconfig
           sudo port install automake
           sudo port install autoconf
           sudo port install libtool
@@ -69,6 +67,9 @@ jobs:
           sudo port install fftw-3-single +openmp
           sudo port install openexr
           sudo port install lcms2
+          sudo port install adwaita-icon-theme
+          sudo port install meson
+          sudo port install dbus
 
       - name: Install LibRaw
         run: |
@@ -102,7 +103,7 @@ jobs:
             -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
             -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
             -DCMAKE_INSTALL_PREFIX=$INSTDIR \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=${CTL_BUILD_TYPE} \
             ../CTL
           make -j$(nproc)
           sudo make install
@@ -131,51 +132,83 @@ jobs:
           make -j$(nproc)
           sudo make install
 
+      - name: Install custom GTK+ with colorspaces support
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          wget https://download.gnome.org/sources/gtk+/3.24/gtk%2B-3.24.43.tar.xz
+          tar xzf gtk+-3.24.43.tar.xz
+          cd gtk+-3.24.43
+          patch -p1 < ../repo/tools/osx/gdk-window-quartz-colorspace.patch
+          INSTDIR=/opt/art-deps/gtk 
+          meson setup build
+          meson configure build \
+            --prefix $INSTDIR \
+            --buildtype release \
+            -Ddebug=false \
+            -Ddemos=false \
+            -Dexamples=false \
+            -Dtests=false \
+            -Dx11_backend=false
+          meson compile -C build
+          sudo meson install -C build
+          sudo cp -a $INSTDIR/include/gtk-3.0/gdk/quartz/gdkquartzwindow.h /opt/local/include/gtk-3.0/gdk/quartz
+          sudo cp -a $INSTDIR/lib/libgdk-3.0.dylib /opt/local/lib/libgdk-3.0.dylib
+
       - name: Configure build
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          export ART_DIR="ART-$(cat repo/version.txt)"
           mkdir build
           cd build
           export PKG_CONFIG_PATH=/opt/art-deps/lib/pkgconfig
           /opt/local/bin/cmake \
             -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-17 \
             -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-17 \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_SAN=${WITH_SAN} \
             -DENABLE_CTL=1 \
             -DENABLE_LIBRAW=1 \
             -DCTL_INCLUDE_DIR=/opt/art-deps/include/CTL \
             -DCMAKE_LIBRARY_PATH=/opt/art-deps/lib \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.osxtarget }} \
-            ../${ART_DIR}
+            -DOSX_DEV_BUILD=1 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=$OS_VERSION \
+            ../repo
           cd ..
 
       - name: Build
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          /opt/local/bin/cmake --build build --target install
+          cd build
+          make -j$(nproc)
+          make install
 
       - name: Include Lensfun
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
           lensfun-update-data
 
+      - name: Install exiftool
+        run: |
+          wget https://exiftool.org/ver.txt
+          wget https://exiftool.org/ExifTool-$(cat ver.txt).pkg
+          sudo installer -pkg ExifTool-$(cat ver.txt).pkg -target /
+
       - name: Create bundle
         run: |
-          ART_NAME="ART-$(cat repo/version.txt)"
+          ART_NAME="ART-${ART_VERSION}"
           OUTDIR=$(pwd)
-          cd build/Release/ART.app
-          python "${OUTDIR}/${ART_NAME}/tools/osx/bundle_ART.py" \
+          cd build/${BUILD_TYPE}/ART.app
+          python "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/art-deps/lib \
-            -d "${ART_NAME}_${{ matrix.os }}_${{ matrix.arch }}"
+            -r /opt/local/libexec/llvm-17/lib/clang/17/lib/darwin -n
           cd "${OUTDIR}"
+          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.tar.gz"
+          tar czf "${ARTIFACT_NAME}" ART.app
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART-$(cat repo/version.txt)_${{ matrix.os }}_${{ matrix.arch }}.dmg"
+          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.tar.gz"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
-          #echo "RELEASE_TAG=v$(cat repo/version.txt)" >> $GITHUB_ENV
-          echo "RELEASE_TAG=macOS-testing" >> $GITHUB_ENV
+          echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
+          echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
 
       - name: Publish release
         uses: ncipollo/release-action@v1
@@ -183,6 +216,5 @@ jobs:
           tag: ${{ env.RELEASE_TAG }}
           body: ${{ env.RELEASE_TAG }}
           allowUpdates: true
-          makeLatest: false
-          draft: true
+          makeLatest: ${{ env.RELEASE_MAKE_LATEST }}
           artifacts: ${{ env.ARTIFACT_NAME }}
