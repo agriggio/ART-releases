@@ -193,19 +193,24 @@ jobs:
 
       - name: Create bundle
         run: |
+          wget https://github.com/artpixls/ART-imageio/releases/download/1.1/ART-imageio.tar.gz
+          tar xzf ART-imageio.tar.gz
+          wget https://github.com/artpixls/ART-imageio/releases/download/1.1/ART-imageio-bin-macOS-arm64.tar.gz
+          tar xzf ART-imageio-bin-macOS-arm64.tar.gz
           ART_NAME="ART-${ART_VERSION}"
           OUTDIR=$(pwd)
           cd build/${BUILD_TYPE}/ART.app
           python "${OUTDIR}/repo/tools/osx/bundle_ART.py" \
             -o "${OUTDIR}" -v -r /opt/art-deps/lib \
-            -r /opt/local/libexec/llvm-17/lib/clang/17/lib/darwin -n
+            -r /opt/local/libexec/llvm-17/lib/clang/17/lib/darwin -e \
+            -i "${OUTDIR}/ART-imageio" \
+            -b "${OUTDIR}/ART-imageio-bin-macOS-arm64" \
+            -d "${ART_NAME}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}"
           cd "${OUTDIR}"
-          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.tar.gz"
-          tar czf "${ARTIFACT_NAME}" ART.app
 
       - name: Prepare artifact name
         run: |
-          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.tar.gz"
+          ARTIFACT_NAME="ART-${ART_VERSION}_macOS-${OS_VERSION}_${{ matrix.arch }}${BUILD_SUFFIX}.dmg"
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
           echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
           echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
